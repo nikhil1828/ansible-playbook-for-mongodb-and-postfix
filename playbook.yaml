@@ -1,0 +1,16 @@
+---
+- name: Setup mongodb Server
+  hosts: all
+  remote_user: ubuntu
+  become: yes
+  become_user: root
+  roles:
+    - mongodb-setup
+
+- name: Setup SMTP Server
+  hosts: all
+  remote_user: ubuntu
+  become: yes
+  become_user: root
+  roles:
+    - postfixsetup

@@ -1,0 +1,47 @@
+---
+# Initializing variables
+- include_vars: ../vars/all.yml
+
+# Update Repository
+- name: refresh apt
+  apt: 
+    name: '*'
+    update_cache: yes
+  become: true 
+
+# Install required packages.
+- name: Install postfix and libsasl2-modules
+  apt: name={{ item }} state=latest force=yes
+  with_items:
+  - postfix
+  - mailutils
+  - libsasl2-modules
+
+- name: Configure postfix
+  command: "{{ item }}"
+  with_items:
+  - postconf -e "relayhost = [email-smtp.ap-south-1.amazonaws.com]:587"
+  - postconf -e "smtp_sasl_auth_enable = yes"
+  - postconf -e "smtp_sasl_security_options = noanonymous"
+  - postconf -e "smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd"
+  - postconf -e "smtp_use_tls = yes"
+  - postconf -e "smtp_tls_security_level = encrypt"
+  - postconf -e "smtp_tls_note_starttls_offer = yes"
+
+- name: Copy the sasl_password file
+  template: src=sasl_passwd.j2 dest=/etc/postfix/sasl_passwd
+  with_items: "{{ smtp_config }}"
+
+- name: Create hashmap database file
+  command: postmap hash:/etc/postfix/sasl_passwd
+
+- name: Securing the smtp credentails
+  command: "{{ item }}"
+  with_items:
+  - chown root:root /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
+  - chmod 0600 /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
+
+- name: Define CA certificate path
+  command: postconf -e 'smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt'
+  notify:
+  - restart mongodb

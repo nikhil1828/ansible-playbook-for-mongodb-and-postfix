@@ -1,0 +1,46 @@
+---
+# Update Repository
+- name: refresh apt
+  apt: 
+    name: '*'
+    update_cache: yes
+  become: true 
+
+#install dependencies
+- name: Install dependencies package
+  apt: name={{ item }} state=latest force=yes
+  with_items:
+  - wget
+  - curl
+  - gnupg2
+  - software-properties-common
+  - apt-transport-https
+  - ca-certificates
+  - lsb-release
+
+#Add MongoDB key
+- name: Import MongoDB GPG key
+  apt_key:
+    url: https://www.mongodb.org/static/pgp/server-5.0.asc
+    state: present
+
+- name: Add MongoDB repository
+  apt_repository:
+    repo: deb [arch=amd64] https://repo.mongodb.org/apt/ubuntu {{ ansible_distribution_release }}/mongodb-org/5.0 multiverse
+    state: present
+    filename: mongodb-org-5.0
+    update_cache: yes
+
+# Install required packages.
+- name: Install mongodb package
+  apt: name={{ item }} state=latest force=yes
+  with_items:
+  - mongodb-org  
+  notify:
+  - restart mongodb
+
+- name: Enable the service
+  systemd:
+    name: mongod
+    state: started
+    enabled: yes
